@@ -7,6 +7,8 @@ import time
 from sqlalchemy import create_engine, Column, Integer, String, Table, MetaData
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+import logging
+
 
 options = webdriver.ChromeOptions()
 options.add_argument("--disable-blink-features=AutomationControlled")
@@ -23,8 +25,8 @@ driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
         delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
   '''
 })
-base_url="https://www.ozon.ru/category/odezhda-dlya-malchikov-7605/"
-url = "https://www.ozon.ru/category/odezhda-dlya-malchikov-7605/"
+base_url="https://www.ozon.ru/category/zaryadnye-ustroystva-i-dok-stantsii-15920/"
+url = "https://www.ozon.ru/category/zaryadnye-ustroystva-i-dok-stantsii-15920/"
 i = 1
 Base = declarative_base()
 
@@ -46,14 +48,14 @@ engine = create_engine('postgresql://postgres:2312@localhost:5432/ozon')
 Session = sessionmaker(bind=engine)
 session = Session()
 idnum = 0
-while i < 5:
+while i < 279:
     driver.get(url)
     time.sleep(randrange(2, 3))
     driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.PAGE_DOWN)
     time.sleep(1)
     # в зависимости от карточки товара название этого класса(class='y4j j5y') может меняться параметры внутри этого
     # элемента при проверкке на другой категории полностью совпали.
-    for el in driver.find_elements(By.CSS_SELECTOR, "div[class='y4j j5y']"):
+    for el in driver.find_elements(By.CSS_SELECTOR, "div[class='y6j jy7']"):
         reviews = 0
         raiting = 0
         try:
@@ -63,18 +65,18 @@ while i < 5:
             for item in items:
                 if item == items[0]:
                     raiting = float(item.text)
-                    print(raiting)
+                    # print(raiting)
                 if item == items[1]:
                     reviews = int(item.text.split(' ')[1])
-                    print(reviews)
+                    # print(reviews)
             # тут происходит отбор товаров по кол-ву отзывов, а далее по оценке, только после прохождения отбора по двум
             # критериям товар занесется в бд
-            if reviews > 1000:
-                if raiting >= 4.7:
+            if reviews > 1500:
+                if raiting >= 4.8:
                      idnum += 1
                      product_url = el.find_element(By.CSS_SELECTOR, "a[class='tile-hover-target j4v v4j']").get_attribute("href")
                      product_name = el.find_element(By.CSS_SELECTOR, "a[class='tile-hover-target j4v v4j']").text
-                     print(product_name)
+                     # print(product_name)
                      product_price = el.find_element(By.CSS_SELECTOR, "div[class='aa2-a0']").text.split("₽")[0]
                      charger = Charger(
                         id=idnum,
@@ -86,13 +88,16 @@ while i < 5:
                      )
                      session.add(charger)
                 else:
+                    # logging.error(Exception)
                     pass
             else:
+                # logging.error(Exception)
                 pass
-        except:
+        except Exception as e:
             pass
 
     i += 1
+    print("link number:",i)
     next_url = f"{base_url}?page={i}"
     url = next_url
 session.commit()
