@@ -1,7 +1,12 @@
+from random import randrange
+from selenium.webdriver import Keys
+from selenium.webdriver.common.by import By
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 import time
-
+from sqlalchemy import create_engine, Column, Integer, String, Table, MetaData
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 
 options = webdriver.ChromeOptions()
 options.add_argument("--disable-blink-features=AutomationControlled")
@@ -18,8 +23,77 @@ driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
         delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
   '''
 })
+base_url="https://www.ozon.ru/category/odezhda-dlya-malchikov-7605/"
+url = "https://www.ozon.ru/category/odezhda-dlya-malchikov-7605/"
+i = 1
+Base = declarative_base()
 
-url = "https://www.ozon.ru/category/zaryadnye-ustroystva-i-dok-stantsii-15920/?tf_state=GJ08ZsZ9qHRGDbbs88min8pawFi2Gl1vPiBeNZjHsrq9Dnl7cUrRcInNrg%3D%3D"
+class Charger(Base):
+    __tablename__ = 'chargers'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    comments = Column(String)
+    price = Column(Integer)
+    url = Column(String)
+    raiting = Column(String)
 
-driver.get(url)
-time.sleep(25)
+engine = create_engine('postgresql://postgres:2312@localhost:5432/ozon')
+# metadata = MetaData()
+#
+# my_table = Table('chargers', metadata, autoload_with=engine)
+# with engine.connect() as conn:
+#     conn.execute(my_table.delete())
+Session = sessionmaker(bind=engine)
+session = Session()
+idnum = 0
+while i < 5:
+    driver.get(url)
+    time.sleep(randrange(2, 3))
+    driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.PAGE_DOWN)
+    time.sleep(1)
+    # в зависимости от карточки товара название этого класса(class='y4j j5y') может меняться параметры внутри этого
+    # элемента при проверкке на другой категории полностью совпали.
+    for el in driver.find_elements(By.CSS_SELECTOR, "div[class='y4j j5y']"):
+        reviews = 0
+        raiting = 0
+        try:
+            items = []
+            for item in el.find_elements(By.CSS_SELECTOR, "span[class='e4f']"):
+                items.append(item)
+            for item in items:
+                if item == items[0]:
+                    raiting = float(item.text)
+                    print(raiting)
+                if item == items[1]:
+                    reviews = int(item.text.split(' ')[1])
+                    print(reviews)
+            # тут происходит отбор товаров по кол-ву отзывов, а далее по оценке, только после прохождения отбора по двум
+            # критериям товар занесется в бд
+            if reviews > 1000:
+                if raiting >= 4.7:
+                     idnum += 1
+                     product_url = el.find_element(By.CSS_SELECTOR, "a[class='tile-hover-target j4v v4j']").get_attribute("href")
+                     product_name = el.find_element(By.CSS_SELECTOR, "a[class='tile-hover-target j4v v4j']").text
+                     print(product_name)
+                     product_price = el.find_element(By.CSS_SELECTOR, "div[class='aa2-a0']").text.split("₽")[0]
+                     charger = Charger(
+                        id=idnum,
+                        name=product_name,
+                        comments=reviews,
+                        price=product_price,
+                        url=product_url,
+                        raiting=raiting
+                     )
+                     session.add(charger)
+                else:
+                    pass
+            else:
+                pass
+        except:
+            pass
+
+    i += 1
+    next_url = f"{base_url}?page={i}"
+    url = next_url
+session.commit()
+
