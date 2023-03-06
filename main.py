@@ -23,9 +23,9 @@ driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
 })
 # вводим данные для старта программы
 url = input("enter your url: ")
-rate_filter = float(input("enter value for filtrating by product rating: "))
+rate_filter = float(input("enter a decimal number from 0 to 5 for filtrating by product rating(for example 4.8): "))
 comment_filter = int(input("enter value for filtrating by num comments: "))
-table_name = input("enter the names for the table where the data will be saved")
+table_name = input("enter the names for the table where the data will be saved: ")
 if url.endswith('/'):
     base_url = f"{url}?"
 else:
